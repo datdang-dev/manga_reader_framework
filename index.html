@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manga Novel Reader</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Bangers&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Universe Background Layers -->
+    <div class="universe-bg">
+        <div id="stars1" class="stars"></div>
+        <div id="stars2" class="stars"></div>
+        <div id="stars3" class="stars"></div>
+        <div class="nebula-layer" id="nebula-layer"></div>
+    </div>
+
+    <!-- Quick Hide Overlay -->
+    <div id="quick-hide" class="quick-hide hidden">
+        <p>Press any key to return...</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button id="home-btn" class="icon-btn" title="Back to Library" onclick="window.location.href='launcher.html'">🏠</button>
+                <button id="menu-btn" class="icon-btn" title="Menu">☰</button>
+                <h1 class="title">
+                    <span class="title-icon">📖</span>
+                    <span class="title-text">Manga Novel Reader</span>
+                </h1>
+            </div>
+            <div class="header-center">
+                <span id="chapter-title" class="chapter-title">Loading...</span>
+            </div>
+            <div class="header-right">
+                <!-- Page Selector -->
+                <div class="page-selector">
+                    <label for="page-select">Page:</label>
+                    <select id="page-select" class="page-select" title="Jump to page"></select>
+                </div>
+                <!-- View Mode Toggle -->
+                <button id="view-mode-btn" class="icon-btn" title="Toggle View Mode">📐</button>
+                <!-- Settings Button -->
+                <button id="settings-btn" class="icon-btn" title="Settings">⚙️</button>
+                <!-- Fullscreen Button -->
+                <button id="fullscreen-btn" class="icon-btn" title="Fullscreen (F)">⛶</button>
+            </div>
+        </header>
+
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Novel Panel (Left) -->
+            <section class="panel novel-panel">
+                <div class="panel-header">
+                    <span class="panel-icon">📝</span>
+                    <span class="panel-title">Light Novel</span>
+                </div>
+                <div id="novel-content" class="novel-content">
+                    <!-- Content loaded by JS -->
+                </div>
+            </section>
+
+            <!-- Divider -->
+            <div class="divider" id="divider">
+                <div class="divider-handle"></div>
+            </div>
+
+            <!-- Manga Panel (Right) -->
+            <section class="panel manga-panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🖼️</span>
+                    <span class="panel-title">Manga Page</span>
+                    <span id="page-indicator" class="page-indicator">Page 001</span>
+                </div>
+                <div id="manga-content" class="manga-content">
+                    <img id="manga-image" src="" alt="Manga Page" class="manga-image">
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer / Controls -->
+        <footer class="footer">
+            <div class="nav-controls">
+                <button id="prev-btn" class="nav-btn" title="Previous (←)">
+                    <span class="nav-icon">◀</span>
+                    <span class="nav-text">Prev</span>
+                </button>
+                <div class="scene-counter">
+                    <span id="current-scene">1</span>
+                    <span class="scene-separator">/</span>
+                    <span id="total-scenes">12</span>
+                </div>
+                <button id="next-btn" class="nav-btn" title="Next (→ or Space)">
+                    <span class="nav-text">Next</span>
+                    <span class="nav-icon">▶</span>
+                </button>
+            </div>
+            
+            <div class="intensity-container">
+                <span class="intensity-label">🔥 Intensity</span>
+                <div class="intensity-bar">
+                    <div id="intensity-fill" class="intensity-fill" style="width: 20%"></div>
+                </div>
+                <span id="intensity-value" class="intensity-value">20%</span>
+            </div>
+
+
+        </footer>
+    </div>
+
+
+
+    <!-- Keyboard Hints -->
+    <div id="keyboard-hints" class="keyboard-hints">
+        <span><kbd>Space</kbd> Next</span>
+        <span><kbd>←→</kbd> Navigate</span>
+        <span><kbd>ESC</kbd> Hide</span>
+        <span><kbd>F</kbd> Fullscreen</span>
+    </div>
+
+    <!-- Sidebar Menu -->
+    <div id="sidebar-overlay" class="sidebar-overlay hidden" onclick="toggleSidebar()"></div>
+    <aside id="sidebar" class="sidebar hidden">
+        <div class="sidebar-header">
+            <h2>📚 Menu</h2>
+            <button class="close-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="launcher.html" class="sidebar-item">
+                <span class="sidebar-icon">🏠</span>
+                <span>Library</span>
+            </a>
+            <button class="sidebar-item" onclick="goToPage(0); toggleSidebar();">
+                <span class="sidebar-icon">⏮️</span>
+                <span>First Page</span>
+            </button>
+            <button class="sidebar-item" onclick="goToPage(pages.length - 1); toggleSidebar();">
+                <span class="sidebar-icon">⏭️</span>
+                <span>Last Page</span>
+            </button>
+            <hr class="sidebar-divider">
+            <button class="sidebar-item" onclick="toggleSettings()">
+                <span class="sidebar-icon">⚙️</span>
+                <span>Settings</span>
+            </button>
+            <button class="sidebar-item" onclick="toggleFullscreen()">
+                <span class="sidebar-icon">⛶</span>
+                <span>Fullscreen</span>
+            </button>
+        </nav>
+        <div class="sidebar-footer">
+            <p>Keyboard: ← → Space ESC F</p>
+        </div>
+    </aside>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Settings</h2>
+                <button class="close-btn" onclick="toggleSettings()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Font Size -->
+                <div class="setting-item">
+                    <label for="font-size-range">📝 Font Size: <span id="font-size-value">18px</span></label>
+                    <input type="range" id="font-size-range" min="12" max="28" value="18" step="1">
+                </div>
+                <!-- View Mode -->
+                <div class="setting-item">
+                    <label>📐 View Mode</label>
+                    <div class="view-mode-options">
+                        <button class="view-mode-btn active" data-mode="split" onclick="setViewMode('split')">
+                            <span>📖</span> Split
+                        </button>
+                        <button class="view-mode-btn" data-mode="novel" onclick="setViewMode('novel')">
+                            <span>📝</span> Novel Only
+                        </button>
+                        <button class="view-mode-btn" data-mode="manga" onclick="setViewMode('manga')">
+                            <span>🖼️</span> Manga Only
+                        </button>
+                    </div>
+                </div>
+                <!-- Auto-scroll -->
+                <div class="setting-item">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="auto-scroll-toggle">
+                        <span>🔄 Auto-scroll to active scene</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Load Story Manifest -->
+    <script src="story/manifest.js"></script>
+    <!-- Load Engine -->
+    <script src="app.js"></script>
+</body>
+</html>

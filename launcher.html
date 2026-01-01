@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manga Library | Novel Reader</title>
+    <meta name="description" content="Browse and read your manga novel collection">
+    <link rel="stylesheet" href="library.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="library-container">
+        <!-- Header -->
+        <header class="library-header">
+            <div class="library-logo">📚</div>
+            <h1 class="library-title">Manga Library</h1>
+            <p class="library-subtitle">Your personal R18 light novel collection</p>
+            
+            <div class="library-stats">
+                <div class="stat-item">
+                    <span id="stat-total" class="stat-value">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-item">
+                    <span id="stat-reading" class="stat-value">0</span>
+                    <span class="stat-label">Reading</span>
+                </div>
+                <div class="stat-item">
+                    <span id="stat-completed" class="stat-value">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading Library...</p>
+        </div>
+        
+        <!-- Manga Grid -->
+        <main id="manga-grid" class="manga-grid" style="display: none;">
+            <!-- Cards rendered by library.js -->
+        </main>
+    </div>
+    
+    <script src="library.js"></script>
+</body>
+</html>
