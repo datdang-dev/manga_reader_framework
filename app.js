@@ -1,51 +1,11 @@
 /**
  * Manga Novel Reader - Generic Engine
- * Loads content based on 'story/manifest.js'
+ * Loads content dynamically based on URL ?manga=folder_name
  */
 
-// Check if manifest is loaded
-if (typeof STORY_MANIFEST === 'undefined') {
-    console.error("CRITICAL: STORY_MANIFEST not found. Please ensure 'story/manifest.js' is loaded.");
-    alert("Error: Story Manifest missing.");
-}
-
-const CONFIG = {
-    mangaBasePath: STORY_MANIFEST.paths.mangaImages,
-    pagesBasePath: STORY_MANIFEST.paths.novelText,
-    totalPages: STORY_MANIFEST.totalScenes, 
-    title: STORY_MANIFEST.title,
-    imageExt: STORY_MANIFEST.imageExtension,
-    mangaId: STORY_MANIFEST.id || 'default'
-};
-
-// Progress Storage Helper
-const Progress = {
-    storageKey: `manga_reader_${CONFIG.mangaId}`,
-    
-    save(pageIndex) {
-        try {
-            const data = {
-                currentPage: pageIndex,
-                totalPages: CONFIG.totalPages,
-                lastRead: new Date().toISOString()
-            };
-            localStorage.setItem(this.storageKey, JSON.stringify(data));
-        } catch (e) {
-            console.warn('Failed to save progress:', e);
-        }
-    },
-    
-    load() {
-        try {
-            const data = localStorage.getItem(this.storageKey);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            console.warn('Failed to load progress:', e);
-            return null;
-        }
-    }
-};
-
+let STORY_MANIFEST = null;
+let CONFIG = null;
+let Progress = null;
 let pages = [];
 let currentPageIndex = 0;
 
@@ -55,8 +15,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function init() {
     const novelContent = document.getElementById('novel-content');
-    novelContent.innerHTML = '<div style="padding:20px; text-align:center">Loading Data...</div>';
+    novelContent.innerHTML = '<div style="padding:20px; text-align:center">Loading Engine...</div>';
 
+    // 1. Get Story from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const storyName = urlParams.get('manga') || urlParams.get('story');
+    
+    if (!storyName) {
+        window.location.href = 'launcher.html';
+        return;
+    }
+
+    // 2. Load Manifest
+    const success = await loadManifest(storyName);
+    if (!success) {
+        novelContent.innerHTML = `<div style="padding:20px; text-align:center">
+            <h3>Error: Story Manifest not found.</h3>
+            <p>Path: assets/${storyName}/manifest.js</p>
+            <a href="launcher.html" style="color:#ff4081">Back to Library</a>
+        </div>`;
+        return;
+    }
+
+    // 3. Setup CONFIG and Progress
+    setupConfig(storyName);
+
+    // 4. Load Content
+    novelContent.innerHTML = '<div style="padding:20px; text-align:center">Loading Chapter Data...</div>';
     await loadAllPages();
     
     if (pages.length === 0) {
@@ -85,6 +70,60 @@ async function init() {
     goToPage(startPage);
     attachEventListeners();
     console.log("Reader Initialized.");
+}
+
+async function loadManifest(storyName) {
+    try {
+        const response = await fetch(`assets/${storyName}/manifest.js`);
+        if (!response.ok) return false;
+        
+        const jsContent = await response.text();
+        const match = jsContent.match(/const\s+STORY_MANIFEST\s*=\s*(\{[\s\S]*?\});/);
+        if (match) {
+            const func = new Function(`return ${match[1]}`);
+            STORY_MANIFEST = func();
+            return true;
+        }
+    } catch (e) {
+        console.error("Manifest error:", e);
+    }
+    return false;
+}
+
+function setupConfig(storyName) {
+    const assetPath = `assets/${storyName}/`;
+    
+    CONFIG = {
+        mangaBasePath: STORY_MANIFEST.paths.mangaImages.startsWith('http') 
+            ? STORY_MANIFEST.paths.mangaImages 
+            : assetPath + STORY_MANIFEST.paths.mangaImages,
+        pagesBasePath: STORY_MANIFEST.paths.novelText.startsWith('http') 
+            ? STORY_MANIFEST.paths.novelText 
+            : assetPath + STORY_MANIFEST.paths.novelText,
+        totalPages: STORY_MANIFEST.totalScenes, 
+        title: STORY_MANIFEST.title,
+        imageExt: STORY_MANIFEST.imageExtension,
+        mangaId: STORY_MANIFEST.id || storyName
+    };
+
+    Progress = {
+        storageKey: `manga_reader_${CONFIG.mangaId}`,
+        save(pageIndex) {
+            try {
+                localStorage.setItem(this.storageKey, JSON.stringify({
+                    currentPage: pageIndex,
+                    totalPages: CONFIG.totalPages,
+                    lastRead: new Date().toISOString()
+                }));
+            } catch (e) {}
+        },
+        load() {
+            try {
+                const data = localStorage.getItem(this.storageKey);
+                return data ? JSON.parse(data) : null;
+            } catch (e) { return null; }
+        }
+    };
 }
 
 async function loadAllPages() {

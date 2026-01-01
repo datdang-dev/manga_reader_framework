@@ -4,46 +4,40 @@
  */
 
 const LIBRARY_CONFIG = {
-    storiesPath: 'story/',           // Current structure uses 'story' folder
+    assetsPath: 'assets/',
+    registryFile: 'assets/registry.json',
     storagePrefix: 'manga_reader_',
-    defaultThumbnail: null,
-    readerPath: 'index.html'         // Direct reader access
+    readerPath: 'index.html'
 };
 
-// Storage helper
+// Storage Helper for Progress Tracking
 const Storage = {
-    getProgress(mangaId) {
-        try {
-            const data = localStorage.getItem(`${LIBRARY_CONFIG.storagePrefix}${mangaId}`);
-            return data ? JSON.parse(data) : null;
-        } catch (e) {
-            console.warn('Failed to read progress:', e);
-            return null;
-        }
-    },
-    
-    setProgress(mangaId, progress) {
-        try {
-            localStorage.setItem(`${LIBRARY_CONFIG.storagePrefix}${mangaId}`, JSON.stringify(progress));
-        } catch (e) {
-            console.warn('Failed to save progress:', e);
-        }
-    },
-    
     getAllProgress() {
-        const progress = {};
-        try {
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith(LIBRARY_CONFIG.storagePrefix)) {
-                    const mangaId = key.replace(LIBRARY_CONFIG.storagePrefix, '');
-                    progress[mangaId] = JSON.parse(localStorage.getItem(key));
+        const allProgress = {};
+        const prefix = LIBRARY_CONFIG.storagePrefix;
+        
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) {
+                try {
+                    const mangaId = key.replace(prefix, '');
+                    const data = JSON.parse(localStorage.getItem(key));
+                    allProgress[mangaId] = data;
+                } catch (e) {
+                    console.warn(`Failed to parse storage for ${key}`);
                 }
             }
-        } catch (e) {
-            console.warn('Failed to read all progress:', e);
         }
-        return progress;
+        return allProgress;
+    },
+    
+    getProgress(mangaId) {
+        try {
+            const data = localStorage.getItem(LIBRARY_CONFIG.storagePrefix + mangaId);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            return null;
+        }
     }
 };
 
@@ -53,58 +47,65 @@ const Library = {
     progressData: {},
     
     async init() {
-        this.showLoading(true);
-        this.progressData = Storage.getAllProgress();
-        
-        // Load manga list from registry
-        await this.loadMangaRegistry();
-        
-        this.showLoading(false);
-        this.render();
-        this.updateStats();
+        try {
+            this.showLoading(true);
+            this.progressData = Storage.getAllProgress();
+            
+            // Load manga list from registry
+            await this.loadMangaRegistry();
+            
+            this.showLoading(false);
+            this.render();
+            this.updateStats();
+        } catch (error) {
+            console.error('Library Initialization failed:', error);
+            this.showError('System load failed. Please refresh or check connection.');
+        }
     },
     
     async loadMangaRegistry() {
-        // Try to load manga registry
         try {
-            const response = await fetch('stories/registry.json');
+            const response = await fetch(LIBRARY_CONFIG.registryFile);
             if (response.ok) {
                 const registry = await response.json();
-                this.mangas = registry.mangas || [];
-                return;
+                const discoveryPromises = registry.mangas.map(m => this.loadSingleManga(m.folder));
+                const results = await Promise.all(discoveryPromises);
+                this.mangas = results.filter(m => m !== null);
             }
         } catch (e) {
-            console.log('No registry found, using fallback discovery');
+            console.error('Failed to load registry:', e);
+            // Fallback: Check example folder if registry fails
+            await this.discoverMangas();
         }
-        
-        // Fallback: Check predefined folders
-        await this.discoverMangas();
     },
-    
-    async discoverMangas() {
-        // Load manifest from story/ folder directly (current structure)
+
+    async loadSingleManga(folder) {
         try {
-            const response = await fetch('story/manifest.js');
+            const response = await fetch(`${LIBRARY_CONFIG.assetsPath}${folder}/manifest.js`);
             if (response.ok) {
                 const text = await response.text();
                 const manifest = this.parseManifest(text);
                 if (manifest) {
-                    manifest._folder = 'current';  // Mark as current story
-                    this.mangas.push(manifest);
+                    manifest._folder = folder;
+                    return manifest;
                 }
             }
         } catch (e) {
-            console.log('No manifest found in story/ folder');
+            console.warn(`Failed to load manifest for ${folder}`);
         }
+        return null;
+    },
+    
+    async discoverMangas() {
+        // Fallback for demo
+        const demo = await this.loadSingleManga('framework_example_prologue');
+        if (demo) this.mangas.push(demo);
     },
     
     parseManifest(jsContent) {
-        // Extract STORY_MANIFEST object from JS file
         try {
-            // Simple extraction - look for the object literal
             const match = jsContent.match(/const\s+STORY_MANIFEST\s*=\s*(\{[\s\S]*?\});/);
             if (match) {
-                // Use Function constructor to safely evaluate the object
                 const func = new Function(`return ${match[1]}`);
                 return func();
             }
@@ -155,7 +156,7 @@ const Library = {
                 <div class="empty-state" style="grid-column: 1 / -1;">
                     <div class="empty-state-icon">📚</div>
                     <h3 class="empty-state-title">No Manga Found</h3>
-                    <p class="empty-state-text">Add manga folders to the 'stories' directory</p>
+                    <p class="empty-state-text">Check assets/registry.json and subfolders</p>
                 </div>
             `;
             return;
@@ -171,15 +172,11 @@ const Library = {
     
     renderCard(manga) {
         const progress = this.getProgressInfo(manga);
-        const folder = manga._folder || manga.id || 'unknown';
+        const folder = manga._folder;
         
-        let thumbnailPath;
-        if (manga._folder === 'current') {
-            thumbnailPath = manga.thumbnail;
-        } else {
-            thumbnailPath = manga.thumbnail 
-                ? `stories/${folder}/${manga.thumbnail}`
-                : null;
+        let thumbnailPath = manga.thumbnail;
+        if (thumbnailPath && !thumbnailPath.startsWith('http') && !thumbnailPath.startsWith('assets/')) {
+            thumbnailPath = `${LIBRARY_CONFIG.assetsPath}${folder}/${manga.thumbnail}`;
         }
         
         let progressBadgeClass = '';
@@ -250,10 +247,22 @@ const Library = {
     },
     
     openReader(manga) {
-        // Navigate to reader directly (current structure)
-        // Pass manga id for progress tracking
-        const mangaId = manga.id || 'default';
-        window.location.href = `index.html?manga=${encodeURIComponent(mangaId)}`;
+        const folder = manga._folder;
+        window.location.href = `index.html?manga=${encodeURIComponent(folder)}`;
+    },
+    
+    showError(msg) {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h3 class="empty-state-title">Loading Error</h3>
+                    <p class="empty-state-text">${msg}</p>
+                    <button onclick="location.reload()" class="btn-read" style="margin-top:20px">Retry</button>
+                </div>
+            `;
+        }
     }
 };
 
