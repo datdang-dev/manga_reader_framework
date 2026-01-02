@@ -138,7 +138,7 @@ async function loadAllPages() {
                 const markdown = await response.text();
                 pages.push({
                     id: i,
-                    pageRef: `${imgRaw}${CONFIG.imageExt}`, 
+                    pageRef: `${textPad}${CONFIG.imageExt}`, 
                     content: parseMarkdownToHTML(markdown),
                     raw: markdown
                 });
